@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -126,7 +126,6 @@
 #undef HAVE_STRTOK_R
 #undef HAVE_ITOA
 #undef HAVE__LTOA
-#undef HAVE__UITOA
 #undef HAVE__ULTOA
 #undef HAVE_STRTOL
 #undef HAVE_STRTOUL
@@ -215,6 +214,7 @@
 #undef HAVE_MEMFD_CREATE
 #undef HAVE_POSIX_FALLOCATE
 #undef HAVE__EXIT
+#undef HAVE_GETEXECPATH
 
 #else
 

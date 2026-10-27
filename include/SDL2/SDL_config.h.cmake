@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -123,7 +123,6 @@
 #cmakedefine HAVE_STRTOK_R 1
 #cmakedefine HAVE_ITOA 1
 #cmakedefine HAVE__LTOA 1
-#cmakedefine HAVE__UITOA 1
 #cmakedefine HAVE__ULTOA 1
 #cmakedefine HAVE_STRTOL 1
 #cmakedefine HAVE_STRTOUL 1
@@ -167,6 +166,7 @@
 #cmakedefine HAVE_FLOORF 1
 #cmakedefine HAVE_FMOD 1
 #cmakedefine HAVE_FMODF 1
+#cmakedefine HAVE_GETEXECPATH 1
 #cmakedefine HAVE_LOG 1
 #cmakedefine HAVE_LOGF 1
 #cmakedefine HAVE_LOG10 1

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -79,6 +79,19 @@ typedef enum SDL_GameControllerType
     SDL_CONTROLLER_TYPE_MAX
 } SDL_GameControllerType;
 
+/**
+ * Types of game controller control bindings.
+ *
+ * A game controller is a collection of bindings that map arbitrary joystick
+ * buttons, axes and hat switches to specific positions on a generic
+ * console-style gamepad.
+ *
+ * \since This enum is available since SDL 2.0.0.
+ *
+ * \sa SDL_GameControllerButtonBind
+ * \sa SDL_GameControllerGetBindForAxis
+ * \sa SDL_GameControllerGetBindForButton
+ */
 typedef enum SDL_GameControllerBindType
 {
     SDL_CONTROLLER_BINDTYPE_NONE = 0,

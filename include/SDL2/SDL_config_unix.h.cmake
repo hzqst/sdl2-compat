@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -221,6 +221,7 @@
 #define SDL_THREAD_PTHREAD 1
 #define SDL_TIMER_UNIX 1
 /* Allow building without X11 support */
+#cmakedefine SDL2COMPAT_DISABLE_X11
 #ifndef SDL2COMPAT_DISABLE_X11
 #define SDL_VIDEO_DRIVER_X11 1
 #endif
@@ -258,6 +259,7 @@
 /* Enable OpenGL support */
 #define SDL_VIDEO_OPENGL 1
 #define SDL_VIDEO_OPENGL_ES 1
+#define SDL_VIDEO_OPENGL_ES2 1
 #define SDL_VIDEO_OPENGL_GLX 1
 #if defined(__LINUX__)
 #define SDL_VIDEO_OPENGL_EGL 1
@@ -266,6 +268,19 @@
 /* Enable Vulkan support */
 #if defined(__LINUX__)
 #define SDL_VIDEO_VULKAN 1
+#endif
+
+/* Enable QNX desktop environment */
+#if defined(__QNX__)
+#define SDL_VIDEO_DRIVER_WAYLAND 1
+#define SDL_VIDEO_DRIVER_QNX 1
+#endif
+
+/* Enable QNX audio */
+#if defined(__QNX__) && (__QNX__ >= 800)
+#define SDL_AUDIO_DRIVER_ALSA 1
+#elif defined(__QNX__)
+#define SDL_AUDIO_DRIVER_QNX 1
 #endif
 
 #endif /* SDL_config_unix_h_ */

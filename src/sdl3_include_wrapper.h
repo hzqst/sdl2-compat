@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1300,6 +1300,55 @@
 #define SDL_GetSystemPageSize IGNORE_THIS_VERSION_OF_SDL_GetSystemPageSize
 #define SDL_GetPenDeviceType IGNORE_THIS_VERSION_OF_SDL_GetPenDeviceType
 #define SDL_CreateAnimatedCursor IGNORE_THIS_VERSION_OF_SDL_CreateAnimatedCursor
+#define SDL_RotateSurface IGNORE_THIS_VERSION_OF_SDL_RotateSurface
+#define SDL_LoadSurface_IO IGNORE_THIS_VERSION_OF_SDL_LoadSurface_IO
+#define SDL_LoadSurface IGNORE_THIS_VERSION_OF_SDL_LoadSurface
+#define SDL_SetWindowFillDocument IGNORE_THIS_VERSION_OF_SDL_SetWindowFillDocument
+#define SDL_TryLockJoysticks IGNORE_THIS_VERSION_OF_SDL_TryLockJoysticks
+#define SDL_CreateGPUXRSession IGNORE_THIS_VERSION_OF_SDL_CreateGPUXRSession
+#define SDL_GetGPUXRSwapchainFormats IGNORE_THIS_VERSION_OF_SDL_GetGPUXRSwapchainFormats
+#define SDL_CreateGPUXRSwapchain IGNORE_THIS_VERSION_OF_SDL_CreateGPUXRSwapchain
+#define SDL_DestroyGPUXRSwapchain IGNORE_THIS_VERSION_OF_SDL_DestroyGPUXRSwapchain
+#define SDL_OpenXR_LoadLibrary IGNORE_THIS_VERSION_OF_SDL_OpenXR_LoadLibrary
+#define SDL_OpenXR_UnloadLibrary IGNORE_THIS_VERSION_OF_SDL_OpenXR_UnloadLibrary
+#define SDL_OpenXR_GetXrGetInstanceProcAddr IGNORE_THIS_VERSION_OF_SDL_OpenXR_GetXrGetInstanceProcAddr
+#define SDL_CreateTrayWithProperties IGNORE_THIS_VERSION_OF_SDL_CreateTrayWithProperties
+#define SDL_SetGPURenderStateSamplerBindings IGNORE_THIS_VERSION_OF_SDL_SetGPURenderStateSamplerBindings
+#define SDL_SetGPURenderStateStorageTextures IGNORE_THIS_VERSION_OF_SDL_SetGPURenderStateStorageTextures
+#define SDL_SetGPURenderStateStorageBuffers IGNORE_THIS_VERSION_OF_SDL_SetGPURenderStateStorageBuffers
+#define SDL_GDKSuspendRenderer IGNORE_THIS_VERSION_OF_SDL_GDKSuspendRenderer
+#define SDL_GDKResumeRenderer IGNORE_THIS_VERSION_OF_SDL_GDKResumeRenderer
+#define SDL_IsPhone IGNORE_THIS_VERSION_OF_SDL_IsPhone
+#define SDL_LoadJPG_IO IGNORE_THIS_VERSION_OF_SDL_LoadJPG_IO
+#define SDL_LoadJPG IGNORE_THIS_VERSION_OF_SDL_LoadJPG
+#define SDL_HasSVE2 IGNORE_THIS_VERSION_OF_SDL_HasSVE2
+#define SDL_GamepadHasCapSense IGNORE_THIS_VERSION_OF_SDL_GamepadHasCapSense
+#define SDL_GetGamepadCapSense IGNORE_THIS_VERSION_OF_SDL_GetGamepadCapSense
+#define SDL_aligned_alloc_zero IGNORE_THIS_VERSION_OF_SDL_aligned_alloc_zero
+#define SDL_wcstoul IGNORE_THIS_VERSION_OF_SDL_wcstoul
+#define SDL_wcstoll IGNORE_THIS_VERSION_OF_SDL_wcstoll
+#define SDL_wcstoull IGNORE_THIS_VERSION_OF_SDL_wcstoull
+#define SDL_RequestNotificationPermission IGNORE_THIS_VERSION_OF_SDL_RequestNotificationPermission
+#define SDL_ShowNotificationWithProperties IGNORE_THIS_VERSION_OF_SDL_ShowNotificationWithProperties
+#define SDL_ShowNotification IGNORE_THIS_VERSION_OF_SDL_ShowNotification
+#define SDL_RemoveNotification IGNORE_THIS_VERSION_OF_SDL_RemoveNotification
+#define SDL_GetDeviceFormFactor IGNORE_THIS_VERSION_OF_SDL_GetDeviceFormFactor
+#define SDL_GetDeviceFormFactorName IGNORE_THIS_VERSION_OF_SDL_GetDeviceFormFactorName
+#define SDL_IsUbuntuTouch IGNORE_THIS_VERSION_OF_SDL_IsUbuntuTouch
+#define SDL_GetNumProperties IGNORE_THIS_VERSION_OF_SDL_GetNumProperties
+#define SDL_JoystickHasSensor IGNORE_THIS_VERSION_OF_SDL_JoystickHasSensor
+#define SDL_SetJoystickSensorEnabled IGNORE_THIS_VERSION_OF_SDL_SetJoystickSensorEnabled
+#define SDL_JoystickSensorEnabled IGNORE_THIS_VERSION_OF_SDL_JoystickSensorEnabled
+#define SDL_GetJoystickSensorDataRate IGNORE_THIS_VERSION_OF_SDL_GetJoystickSensorDataRate
+#define SDL_GetJoystickSensorData IGNORE_THIS_VERSION_OF_SDL_GetJoystickSensorData
+#define SDL_SetRenderViewportFloat IGNORE_THIS_VERSION_OF_SDL_SetRenderViewportFloat
+#define SDL_GetRenderViewportFloat IGNORE_THIS_VERSION_OF_SDL_GetRenderViewportFloat
+#define SDL_SetRenderClipRectFloat IGNORE_THIS_VERSION_OF_SDL_SetRenderClipRectFloat
+#define SDL_GetRenderClipRectFloat IGNORE_THIS_VERSION_OF_SDL_GetRenderClipRectFloat
+#define SDL_GetOpenHarmonySDKVersion IGNORE_THIS_VERSION_OF_SDL_GetOpenHarmonySDKVersion
+#define SDL_GetOpenHarmonyInternalStoragePath IGNORE_THIS_VERSION_OF_SDL_GetOpenHarmonyInternalStoragePath
+#define SDL_RequestOpenHarmonyPermission IGNORE_THIS_VERSION_OF_SDL_RequestOpenHarmonyPermission
+#define SDL_GetAudioDeviceProperties IGNORE_THIS_VERSION_OF_SDL_GetAudioDeviceProperties
 
 
 #define SDL_FUNCTION_POINTER_IS_VOID_POINTER 1
@@ -6394,7 +6443,205 @@
 #undef SDL_CreateAnimatedCursor
 #endif
 
-/*	see at top.	*/
+#ifdef SDL_RotateSurface
+#undef SDL_RotateSurface
+#endif
+
+#ifdef SDL_LoadSurface_IO
+#undef SDL_LoadSurface_IO
+#endif
+
+#ifdef SDL_LoadSurface
+#undef SDL_LoadSurface
+#endif
+
+#ifdef SDL_SetWindowFillDocument
+#undef SDL_SetWindowFillDocument
+#endif
+
+#ifdef SDL_TryLockJoysticks
+#undef SDL_TryLockJoysticks
+#endif
+
+#ifdef SDL_CreateGPUXRSession
+#undef SDL_CreateGPUXRSession
+#endif
+
+#ifdef SDL_GetGPUXRSwapchainFormats
+#undef SDL_GetGPUXRSwapchainFormats
+#endif
+
+#ifdef SDL_CreateGPUXRSwapchain
+#undef SDL_CreateGPUXRSwapchain
+#endif
+
+#ifdef SDL_DestroyGPUXRSwapchain
+#undef SDL_DestroyGPUXRSwapchain
+#endif
+
+#ifdef SDL_OpenXR_LoadLibrary
+#undef SDL_OpenXR_LoadLibrary
+#endif
+
+#ifdef SDL_OpenXR_UnloadLibrary
+#undef SDL_OpenXR_UnloadLibrary
+#endif
+
+#ifdef SDL_OpenXR_GetXrGetInstanceProcAddr
+#undef SDL_OpenXR_GetXrGetInstanceProcAddr
+#endif
+
+#ifdef SDL_CreateTrayWithProperties
+#undef SDL_CreateTrayWithProperties
+#endif
+
+#ifdef SDL_SetGPURenderStateSamplerBindings
+#undef SDL_SetGPURenderStateSamplerBindings
+#endif
+
+#ifdef SDL_SetGPURenderStateStorageTextures
+#undef SDL_SetGPURenderStateStorageTextures
+#endif
+
+#ifdef SDL_SetGPURenderStateStorageBuffers
+#undef SDL_SetGPURenderStateStorageBuffers
+#endif
+
+#ifdef SDL_GDKSuspendRenderer
+#undef SDL_GDKSuspendRenderer
+#endif
+
+#ifdef SDL_GDKResumeRenderer
+#undef SDL_GDKResumeRenderer
+#endif
+
+#ifdef SDL_IsPhone
+#undef SDL_IsPhone
+#endif
+
+#ifdef SDL_LoadJPG_IO
+#undef SDL_LoadJPG_IO
+#endif
+
+#ifdef SDL_LoadJPG
+#undef SDL_LoadJPG
+#endif
+
+#ifdef SDL_HasSVE2
+#undef SDL_HasSVE2
+#endif
+
+#ifdef SDL_GamepadHasCapSense
+#undef SDL_GamepadHasCapSense
+#endif
+
+#ifdef SDL_GetGamepadCapSense
+#undef SDL_GetGamepadCapSense
+#endif
+
+#ifdef SDL_aligned_alloc_zero
+#undef SDL_aligned_alloc_zero
+#endif
+
+#ifdef SDL_wcstoul
+#undef SDL_wcstoul
+#endif
+
+#ifdef SDL_wcstoll
+#undef SDL_wcstoll
+#endif
+
+#ifdef SDL_wcstoull
+#undef SDL_wcstoull
+#endif
+
+#ifdef SDL_RequestNotificationPermission
+#undef SDL_RequestNotificationPermission
+#endif
+
+#ifdef SDL_ShowNotificationWithProperties
+#undef SDL_ShowNotificationWithProperties
+#endif
+
+#ifdef SDL_ShowNotification
+#undef SDL_ShowNotification
+#endif
+
+#ifdef SDL_RemoveNotification
+#undef SDL_RemoveNotification
+#endif
+
+#ifdef SDL_GetDeviceFormFactor
+#undef SDL_GetDeviceFormFactor
+#endif
+
+#ifdef SDL_GetDeviceFormFactorName
+#undef SDL_GetDeviceFormFactorName
+#endif
+
+#ifdef SDL_IsUbuntuTouch
+#undef SDL_IsUbuntuTouch
+#endif
+
+#ifdef SDL_GetNumProperties
+#undef SDL_GetNumProperties
+#endif
+
+#ifdef SDL_JoystickHasSensor
+#undef SDL_JoystickHasSensor
+#endif
+
+#ifdef SDL_SetJoystickSensorEnabled
+#undef SDL_SetJoystickSensorEnabled
+#endif
+
+#ifdef SDL_JoystickSensorEnabled
+#undef SDL_JoystickSensorEnabled
+#endif
+
+#ifdef SDL_GetJoystickSensorDataRate
+#undef SDL_GetJoystickSensorDataRate
+#endif
+
+#ifdef SDL_GetJoystickSensorData
+#undef SDL_GetJoystickSensorData
+#endif
+
+#ifdef SDL_SetRenderViewportFloat
+#undef SDL_SetRenderViewportFloat
+#endif
+
+#ifdef SDL_GetRenderViewportFloat
+#undef SDL_GetRenderViewportFloat
+#endif
+
+#ifdef SDL_SetRenderClipRectFloat
+#undef SDL_SetRenderClipRectFloat
+#endif
+
+#ifdef SDL_GetRenderClipRectFloat
+#undef SDL_GetRenderClipRectFloat
+#endif
+
+#ifdef SDL_GetOpenHarmonySDKVersion
+#undef SDL_GetOpenHarmonySDKVersion
+#endif
+
+#ifdef SDL_GetOpenHarmonyInternalStoragePath
+#undef SDL_GetOpenHarmonyInternalStoragePath
+#endif
+
+#ifdef SDL_RequestOpenHarmonyPermission
+#undef SDL_RequestOpenHarmonyPermission
+#endif
+
+#ifdef SDL_GetAudioDeviceProperties
+#undef SDL_GetAudioDeviceProperties
+#endif
+
+
+/* see at top.
+ */
 #undef SDL_ThreadID
 #ifdef SDL_CreateThread
 #undef SDL_CreateThread

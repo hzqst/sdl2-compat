@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -211,7 +211,7 @@ typedef void (SDLCALL * SDL_AudioFilter) (struct SDL_AudioCVT * cvt,
  *  set both its (buf) field to a pointer that is aligned to 16 bytes, and its
  *  (len) field to something that's a multiple of 16, if possible.
  */
-#if defined(__GNUC__) && !defined(__CHERI_PURE_CAPABILITY__)
+#if defined(__GNUC__) && !defined(_WIN32) && !defined(__CHERI_PURE_CAPABILITY__)
 /* This structure is 84 bytes on 32-bit architectures, make sure GCC doesn't
    pad it out to 88 bytes to guarantee ABI compatibility between compilers.
    This is not a concern on CHERI architectures, where pointers must be stored

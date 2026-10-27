@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -379,7 +379,7 @@ static SDL_INLINE void *get_sdlapi_entry(const char *fname, const char *sym)
     return retval;
 }
 
-#elif defined(unix) || defined(__unix__) || defined(__APPLE__) || defined(SDL_PLATFORM_HAIKU) || defined(SDL_PLATFORM_QNX)
+#elif defined(unix) || defined(__unix__) || defined(__APPLE__) || defined(SDL_PLATFORM_HAIKU) || defined(SDL_PLATFORM_QNXNTO)
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>

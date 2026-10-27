@@ -3,7 +3,7 @@
   "remote": "libsdl-org/sdl2-compat",
   "dependencies": {
     "SDL": {
-      "startswith": "3.",
+      "startswith": "3.4",
       "repo": "libsdl-org/SDL"
     }
   },
@@ -29,8 +29,7 @@
     "cmake": {
       "archs": [
         "x86",
-        "x64",
-        "arm64"
+        "x64"
       ],
       "args": [
         "-DSDL2COMPAT_VENDOR_INFO=libsdl.org",

@@ -2,8 +2,8 @@
 #        you can define SDL3_INCLUDE_DIRS on the cmdline.  For example:
 #        cmake -DSDL3_INCLUDE_DIRS=/opt/SDL3/include [other stuff ....]
 
-cmake_minimum_required(VERSION 3.0...3.28)
-project(sdl2_compat VERSION 2.32.57 LANGUAGES C)
+cmake_minimum_required(VERSION 3.0...4.1)
+project(sdl2_compat VERSION 2.32.75 LANGUAGES C)
 
 option(USE_VCLTL "USE VCLTL" OFF)
 
@@ -93,13 +93,14 @@ cmake_dependent_option(SDL2COMPAT_INSTALL_SDL3 "Install SDL3 next to SDL2" OFF "
 option(SDL2COMPAT_ASAN "Use AddressSanitizer to detect memory errors" OFF)
 option(SDL2COMPAT_STATIC "Enable building static SDL2 link library" OFF)
 option(SDL2COMPAT_WERROR "Treat warnings as errors" OFF)
-option(SDL2COMPAT_DISABLE_X11 "Disable X11 support" OFF)
+option(SDL2COMPAT_X11 "Enable X11 support" ON)
+option(SDL2COMPAT_LIBC "Use the system C library (Windows Visual Studio)" OFF)
 set(SDL2COMPAT_VENDOR_INFO "" CACHE STRING "Vendor name and/or version to add to SDL_REVISION")
 set(SDL2COMPAT_FRAMEWORK FALSE)
 #FIXME: should SDL2-compat modify vendor_info/revision information?
 
-if(SDL2COMPAT_STATIC AND NOT (CMAKE_SYSTEM_NAME MATCHES "Linux"))
-  message(FATAL_ERROR "Static builds are only supported on Linux.")
+if(SDL2COMPAT_STATIC AND NOT (CMAKE_SYSTEM_NAME MATCHES "Linux|QNX"))
+  message(FATAL_ERROR "Static builds are only supported on Linux or QNX.")
 endif()
 
 macro(check_add_debug_flag FLAG SUFFIX)
@@ -242,12 +243,17 @@ if(APPLE)
 endif()
 
 if(WIN32)
+  if(NOT SDL2COMPAT_LIBC)
+    list(APPEND SDL2COMPAT_SRCS
+      "src/sdl2_mslibc.c"
+    )
+  endif()
+
   list(APPEND SDL2COMPAT_SRCS
-    "src/sdl2_mslibc.c"
     "src/version.rc"
   )
 endif()
-if(MSVC)
+if(MSVC AND NOT SDL2COMPAT_LIBC)
   if(SDL_CPU_X64)
     list(APPEND SDL2COMPAT_SRCS
       "src/sdl2_mslibc_x64.masm"
@@ -329,18 +335,20 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 string(STRIP "${CMAKE_C_FLAGS}" CMAKE_C_FLAGS)
 
+set(SDL2COMPAT_DISABLE_X11 OFF)
 if(UNIX AND NOT APPLE)
   target_compile_definitions(SDL2 PRIVATE "_REENTRANT")
   target_link_libraries(SDL2 PRIVATE ${CMAKE_DL_LIBS})
-  if(NOT SDL2COMPAT_DISABLE_X11)
+  if(SDL2COMPAT_X11)
     find_package(X11 REQUIRED)
     target_compile_definitions(SDL2 PRIVATE SDL2COMPAT_HAVE_X11)
     include_directories(${X11_INCLUDE_DIR})
   else()
-    target_compile_definitions(SDL2 PRIVATE SDL2COMPAT_DISABLE_X11)
+    set(SDL2COMPAT_DISABLE_X11 ON)
     message(STATUS "X11 support disabled")
   endif()
 endif()
+configure_file(include/SDL2/SDL_config_unix.h.cmake include/SDL2/SDL_config_unix.h)
 
 if(ANDROID)
   target_link_libraries(SDL2 PRIVATE log)
@@ -394,7 +402,7 @@ if(MINGW)
     set_property(TARGET SDL2 APPEND_STRING PROPERTY LINK_FALGS " -static-libgcc")
   endif()
 endif()
-if(MSVC)
+if(MSVC AND NOT SDL2COMPAT_LIBC)
   # Don't try to link with the default set of libraries.
   target_compile_options(SDL2 PRIVATE "$<$<COMPILE_LANGUAGE:C>:/GS->")
   if(SDL_CPU_X86)  # don't emit SSE2 in x86 builds
@@ -404,6 +412,7 @@ if(MSVC)
     set_property(TARGET SDL2 APPEND_STRING PROPERTY LINK_FLAGS " /NODEFAULTLIB")
   endif()
   # Make sure /RTC1 is disabled: (from SDL2 CMake)
+  set_property(TARGET SDL2  PROPERTY MSVC_RUNTIME_CHECKS "")
   foreach(flag_var
     CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
     CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
@@ -559,7 +568,7 @@ if(SDL2COMPAT_INSTALL)
     DESTINATION "${SDL2COMPAT_INSTALL_CMAKEDIR}"
   )
 
-  file(GLOB SDL2_INCLUDE_FILES ${PROJECT_SOURCE_DIR}/include/SDL2/*.h)
+  file(GLOB SDL2_INCLUDE_FILES ${PROJECT_SOURCE_DIR}/include/SDL2/*.h "${PROJECT_BINARY_DIR}/include/SDL2/SDL_config_unix.h")
   set(SDL2_COPIED_INCLUDE_FILES)
   foreach(_hdr IN LISTS SDL2_INCLUDE_FILES)
     if(_hdr MATCHES ".*(SDL_config).*")
@@ -573,23 +582,27 @@ if(SDL2COMPAT_INSTALL)
   endforeach()
   install(FILES "${PROJECT_BINARY_DIR}/include/SDL2/SDL_revision.h" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/SDL2")
 
+  get_property(sdl2_public_macros TARGET SDL2 PROPERTY INTERFACE_COMPILE_DEFINITIONS)
+  if(sdl2_public_macros)
+    string(REPLACE ";" " -D" sdl2_public_macros ";${sdl2_public_macros}")
+  endif()
   if(MSVC)
-    set(SDL_CFLAGS "")
+    set(SDL_CFLAGS "${sdl2_public_macros}")
     set(SDL_RLD_FLAGS "")
     set(SDL_LIBS "-lSDL2main -lSDL2")
     set(SDL_STATIC_LIBS "-lshell32")
   elseif(MINGW)
-    set(SDL_CFLAGS "")
+    set(SDL_CFLAGS "${sdl2_public_macros}")
     set(SDL_RLD_FLAGS "")
     set(SDL_LIBS "-lmingw32 -lSDL2main -lSDL2 -mwindows")
     set(SDL_STATIC_LIBS "-lshell32")
   elseif(APPLE)
-    set(SDL_CFLAGS "-D_THREAD_SAFE")
+    set(SDL_CFLAGS "-D_THREAD_SAFE${sdl2_public_macros}")
     set(SDL_RLD_FLAGS "")  # !!! FIXME: this forces rpath, which we might want?
     set(SDL_LIBS "-lSDL2main -lSDL2 -Wl,-framework,Cocoa")
     set(SDL_STATIC_LIBS "")
   else() # unix
-    set(SDL_CFLAGS "-D_GNU_SOURCE=1 -D_REENTRANT")
+    set(SDL_CFLAGS "-D_GNU_SOURCE=1 -D_REENTRANT${sdl2_public_macros}")
     set(SDL_RLD_FLAGS "")  # !!! FIXME: this forces rpath, which we might want?
     set(SDL_LIBS "-lSDL2")
     set(SDL_STATIC_LIBS "")

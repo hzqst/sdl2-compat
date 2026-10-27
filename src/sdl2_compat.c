@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,7 +29,7 @@
 #if defined(DisableScreenSaver)
 /*
 This breaks the build when creating SDL_ ## DisableScreenSaver
-/usr/include/X11/X.h:#define DisableScreenSaver	0
+/usr/include/X11/X.h:#define DisableScreenSaver    0
 */
 #undef DisableScreenSaver
 #endif
@@ -58,7 +58,7 @@ This breaks the build when creating SDL_ ## DisableScreenSaver
  * The number might increment past 90 if there are a ton of releases.
  */
 #define SDL2_COMPAT_VERSION_MINOR 32
-#define SDL2_COMPAT_VERSION_PATCH 57
+#define SDL2_COMPAT_VERSION_PATCH 75
 
 #ifndef SDL2COMPAT_REVISION
 #define SDL2COMPAT_REVISION "SDL-2." STRINGIFY(SDL2_COMPAT_VERSION_MINOR) "." STRINGIFY(SDL2_COMPAT_VERSION_PATCH) "-no-vcs"
@@ -96,8 +96,12 @@ This breaks the build when creating SDL_ ## DisableScreenSaver
 #undef snprintf
 #undef vsnprintf
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__GNU__)
 #include <unistd.h> /* for readlink() */
+#endif
+
+#ifdef SDL_PLATFORM_QNXNTO
+#include <sys/process.h> /* for getprogname() */
 #endif
 
 #if defined(SDL_PLATFORM_UNIX) || defined(__APPLE__)
@@ -212,9 +216,12 @@ do { \
 #define PROP_WINDOW_EXPECTED_HEIGHT "sdl2-compat.window.expected_height"
 #define PROP_WINDOW_EXPECTED_SCALE "sdl2-compat.window.expected_scale"
 #define PROP_WINDOW_GAMMA_RAMP "sdl2-compat.window.gamma_ramp"
+#define PROP_WINDOW_MOUSE_GRABBED "sdl2-compat.window.mouse_grabbed"
+#define PROP_WINDOW_KEYBOARD_GRABBED "sdl2-compat.window.keyboard_grabbed"
 #define PROP_RENDERER_BATCHING "sdl2-compat.renderer.batching"
 #define PROP_RENDERER_RELATIVE_SCALING "sdl2-compat.renderer.relative-scaling"
 #define PROP_RENDERER_INTEGER_SCALE "sdl2-compat.renderer.integer_scale"
+#define PROP_RENDERER_MAIN_VIEW_LOGICAL_PRESENTATION "sdl2-compat.renderer.main_view_logical_presentation"
 #define PROP_TEXTURE_SCALE_MODE "sdl2-compat.texture.scale_mode"
 #define PROP_SURFACE2 "sdl2-compat.surface2"
 #define PROP_STREAM2 "sdl2-compat.stream2"
@@ -268,18 +275,27 @@ SDL2COMPAT_itoa(char *dst, int val)
 }
 
 /* you can use SDL3_strlen once we're past startup. */
-static int SDL2Compat_strlen(const char *str)
+static size_t SDL2Compat_strlen(const char *str)
 {
-    volatile int retval = 0;  /* volatile prevents gcc from optimizing this into strlen() */
-    while (str[retval]) {
-        retval++;
+#ifdef SDL_PLATFORM_WINDOWS
+    /* volatile prevents gcc from optimizing this into a call to the
+     * strlen() library function, which we are intentionally avoiding on
+     * Windows: see #340 */
+    volatile const char *ptr = str;
+    while (*ptr) {
+        ++ptr;
     }
-    return retval;
+    return (size_t)(ptr - str);
+#else
+    /* On other platforms we rely on libc */
+    return strlen (str);
+#endif
 }
 
 /* you can use SDL3_strcmp once we're past startup. */
 static bool SDL2Compat_strequal(const char *a, const char *b)
 {
+#ifdef SDL_PLATFORM_WINDOWS
     while (true) {
         const char cha = *a;
         if (cha != *b) {
@@ -291,11 +307,15 @@ static bool SDL2Compat_strequal(const char *a, const char *b)
         b++;
     }
     return true;
+#else
+    return (strcmp (a, b) == 0);
+#endif
 }
 
 /* you can use SDL3_strrchr once we're past startup. */
 static char *SDL2Compat_strrchr(const char *string, int c)
 {
+#ifdef SDL_PLATFORM_WINDOWS
     const char *bufp = string + SDL2Compat_strlen(string);
     while (bufp >= string) {
         if (*bufp == c) {
@@ -304,6 +324,9 @@ static char *SDL2Compat_strrchr(const char *string, int c)
         --bufp;
     }
     return NULL;
+#else
+    return (char *) strrchr (string, c);
+#endif
 }
 
 /* log a string using platform-specific code for before SDL3 is fully available. */
@@ -383,11 +406,11 @@ static char loaderror[256];
         /* I don't know if this is the _right_ order to try, but this seems reasonable */
         static const char * const dylib_locations[] = {
             "@loader_path/" SDL3_LIBNAME, /* MyApp.app/Contents/MacOS/libSDL3.dylib */
-            "@loader_path/../Frameworks/" SDL3_FRAMEWORK, /* MyApp.app/Contents/Frameworks/SDL2.framework */
+            "@loader_path/../Frameworks/" SDL3_FRAMEWORK, /* MyApp.app/Contents/Frameworks/SDL3.framework */
             "@executable_path/" SDL3_LIBNAME, /* MyApp.app/Contents/MacOS/libSDL3.dylib */
-            "@executable_path/../Frameworks/" SDL3_FRAMEWORK, /* MyApp.app/Contents/Frameworks/SDL2.framework */
-            NULL,  /* /Users/username/Library/Frameworks/SDL2.framework */
-            "/Library/Frameworks" SDL3_FRAMEWORK, /* /Library/Frameworks/SDL2.framework */
+            "@executable_path/../Frameworks/" SDL3_FRAMEWORK, /* MyApp.app/Contents/Frameworks/SDL3.framework */
+            NULL,  /* /Users/username/Library/Frameworks/SDL3.framework */
+            "/Library/Frameworks/" SDL3_FRAMEWORK, /* /Library/Frameworks/SDL3.framework */
             SDL3_LIBNAME /* oh well, anywhere the system can see the .dylib (/usr/local/lib or whatever) */
         };
 
@@ -423,7 +446,8 @@ static char loaderror[256];
     }
 #elif defined(SDL_PLATFORM_UNIX)
     #include <dlfcn.h>
-    #ifdef __ANDROID__
+    #include <SDL3/SDL_dlopennote.h>
+    #if defined(__ANDROID__) || defined(__OHOS__)
         #define SDL3_LIBNAME "libSDL3.so"
     #else
         #define SDL3_LIBNAME "libSDL3.so.0"
@@ -432,6 +456,14 @@ static char loaderror[256];
     #define LoadSDL3Library() ((Loaded_SDL3 = dlopen(SDL3_LIBNAME, RTLD_LOCAL|RTLD_NOW)) != NULL)
     #define LookupSDL3Sym(sym) dlsym(Loaded_SDL3, sym)
     #define CloseSDL3Library() { if (Loaded_SDL3) { dlclose(Loaded_SDL3); Loaded_SDL3 = NULL; } }
+    #ifdef SDL_ELF_NOTE_DLOPEN
+        SDL_ELF_NOTE_DLOPEN(
+            "SDL3",
+            "sdl2-compat translates SDL2 API calls into equivalent SDL3 calls",
+            SDL_ELF_NOTE_DLOPEN_PRIORITY_REQUIRED,
+            SDL3_LIBNAME
+        )
+    #endif
 #else
     #error Please define your platform.
 #endif
@@ -501,6 +533,11 @@ static QuirkEntryType quirks[] = {
     { "tauon/__main__.py", SDL_HINT_VIDEO_WAYLAND_SCALE_TO_DISPLAY, "0" },
     { "tauon/__main__.py", SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR, "0" },
 
+    /* Domino-Chain relies on presented backbuffers having their contents preserved,
+     * which is undefined behavior on all but the software renderer.
+     */
+    { "domino-chain", SDL_HINT_RENDER_DRIVER, "software" },
+
 #ifdef SDL2COMPAT_HAVE_X11
     /* Stylus Labs Write does its own X11 input handling */
     { "Write", "SDL_VIDEO_X11_XINPUT2", "0" },
@@ -532,10 +569,19 @@ static QuirkEntryType quirks[] = {
 
     /* SimCity 3000 tries to call SDL_DestroyMutex after we have been unloaded */
     {"sc3u.dynamic", "SDL2COMPAT_NO_UNLOAD", "1"},
+
+    /* X4: Foundations assumes X11 and exits with an error otherwise
+     * https://github.com/libsdl-org/sdl2-compat/issues/555 */
+    {"X4", SDL_HINT_VIDEO_DRIVER, "x11"},
+
+    /* Payday 2 wants to do most of its video subsystem stuff from a background thread, including
+     * CreateWindow, PollEvent, and GL_SwapWindow, and this upsets Wayland.
+     * https://github.com/libsdl-org/sdl2-compat/issues/537 */
+    {"payday2_release", SDL_HINT_VIDEO_DRIVER, "x11"},
 #endif
 };
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__GNU__)
 static void OS_GetExeName(char *buf, const unsigned maxpath, bool *use_base_path)
 {
     int ret;
@@ -589,7 +635,7 @@ static void OS_GetExeName(char *buf, const unsigned maxpath, bool *use_base_path
     buf[0] = '\0';
     GetModuleFileNameA(NULL, buf, maxpath);
 }
-#elif defined(__APPLE__) || defined(SDL_PLATFORM_FREEBSD)
+#elif defined(__APPLE__) || defined(SDL_PLATFORM_FREEBSD) || defined(SDL_PLATFORM_QNXNTO)
 static void OS_GetExeName(char *buf, const unsigned maxpath, bool *use_base_path)
 {
     const char *progname = getprogname();
@@ -742,6 +788,17 @@ SDL_SetHintWithPriority(const char *name, const char *value, SDL_HintPriority pr
     bool free_value = false;
     const char *value3 = SDL2_to_SDL3_hint_value(name, value, &free_value);
     SDL2_bool result = SDL3_SetHintWithPriority(SDL2_to_SDL3_hint(name), value3, priority) ? SDL2_TRUE : SDL2_FALSE;
+#if defined(SDL_PLATFORM_ANDROID) || defined(SDL_PLATFORM_IOS)
+    /* Pen events were delivered as touch events on mobile in SDL2 */
+    if (result && SDL3_strcmp(name, "SDL_TOUCH_MOUSE_EVENTS") == 0) {
+        SDL3_SetHintWithPriority("SDL_PEN_MOUSE_EVENTS", value3, priority);
+    }
+#else
+    /* Pen events were delivered as mouse events on desktop in SDL2 */
+    if (result && SDL3_strcmp(name, "SDL_MOUSE_TOUCH_EVENTS") == 0) {
+        SDL3_SetHintWithPriority("SDL_PEN_TOUCH_EVENTS", value3, priority);
+    }
+#endif
     if (free_value) {
         SDL3_free((void *)value3);
     }
@@ -884,7 +941,7 @@ SDL2Compat_ApplyQuirks(bool force_x11)
     if (WantDebugLogging) {
         const char *lead = "sdl2-compat: This app appears to be named:";
         char msg[256];
-        if ((SDL2Compat_strlen(lead) + SDL2Compat_strlen(exe_name) + 2) <= (int) (sizeof (msg))) {
+        if (SDL2Compat_strlen(exe_name) <= sizeof (msg) - (SDL2Compat_strlen(lead) + 2)) {
             char *p = msg;
             p = SDL2COMPAT_stpcpy(p, lead);
             p = SDL2COMPAT_stpcpy(p, " ");
@@ -1075,6 +1132,8 @@ LoadSDL3(void)
                         SDL2Compat_LogAtStartup(debugmsg);
                     }
                     SDL2Compat_ApplyQuirks(force_x11);  /* Apply and maybe print a list of any enabled quirks. */
+                    SDL2Compat_SetEnvAtStartup("SDL3_VERSION", sdl3verstr);
+                    SDL2Compat_SetEnvAtStartup("SDL2_COMPAT", "1");
                 }
             }
             #define SDL3_SYM(rc,fn,params,args,ret) SDL3_##fn = (SDL3_##fn##_t) LoadSDL3Symbol("SDL_" #fn, &okay);
@@ -1231,6 +1290,8 @@ static SDL_mutex *EventWatchListMutex = NULL;
 static SDL2_LogOutputFunction LogOutputFunction2 = NULL;
 static EventFilterWrapperData *EventWatchers2 = NULL;
 static SDL2_bool relative_mouse_mode = SDL2_FALSE;
+static float residual_motion_x = 0.0f;
+static float residual_motion_y = 0.0f;
 static SDL_JoystickID *joystick_instance_list = NULL;
 static int num_joystick_instances = 0;
 static SDL_JoystickID *joystick_list = NULL;
@@ -1366,6 +1427,11 @@ SDL2Compat_InitOnStartupInternal(void)
     SDL3_SetHint("SDL_BORDERLESS_WINDOWED_STYLE", "0");
     SDL3_SetHint("SDL_VIDEO_SYNC_WINDOW_OPERATIONS", "1");
     SDL3_SetHint("SDL_VIDEO_X11_EXTERNAL_WINDOW_INPUT", "0");
+
+#if !defined(SDL_PLATFORM_ANDROID) && !defined(SDL_PLATFORM_IOS)
+    /* SDL2 treated pen events as mouse events on desktop platforms */
+    SDL3_SetHint("SDL_PEN_TOUCH_EVENTS", "0");
+#endif
 
     /* Emulate integer mouse coordinates */
     SDL3_SetHint("SDL_MOUSE_INTEGER_MODE", "1");
@@ -2235,6 +2301,51 @@ static SDL_AudioDeviceID AudioDeviceID3to2(SDL_AudioDeviceID id)
 
 static int GetIndexFromJoystickInstance(SDL_JoystickID jid);
 
+static bool ShouldTransformMouseCoordinates(SDL_Renderer *renderer)
+{
+    /* The mouse coordinates should only be transformed if the main view is using a
+     * logical presentation mode, as it can differ from the mode set on a render target.
+     */
+    SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+    const int propval = (int)SDL3_GetNumberProperty(SDL3_GetRendererProperties(renderer),
+                                                    PROP_RENDERER_MAIN_VIEW_LOGICAL_PRESENTATION, -1);
+    if (propval == -1) {
+        /* No render target bound, query the presentation mode directly. */
+        SDL3_GetRenderLogicalPresentation(renderer, NULL, NULL, &mode);
+    } else {
+        mode = (SDL_RendererLogicalPresentation)propval;
+    }
+
+    return mode != SDL_LOGICAL_PRESENTATION_DISABLED;
+}
+
+static SDL_MouseID MouseID3to2(SDL_MouseID mouseID3)
+{
+    if (mouseID3 == SDL_PEN_MOUSEID) {
+        /* Pens were touch devices on mobile (SDL_TOUCH_MOUSEID),
+         * but they were "real" mice on desktop (always MouseID 0) */
+#if defined(SDL_PLATFORM_ANDROID) || defined(SDL_PLATFORM_IOS)
+        return SDL_TOUCH_MOUSEID;
+#else
+        return 0;
+#endif
+    }
+
+    return mouseID3;
+}
+
+static SDL_TouchID TouchID3to2(SDL_TouchID touchID3)
+{
+#if !defined(SDL_PLATFORM_ANDROID) && !defined(SDL_PLATFORM_IOS)
+    if (touchID3 == SDL_PEN_TOUCHID) {
+        /* Pens were mice on desktop, so their events should have SDL_MOUSE_TOUCHID */
+        return SDL_MOUSE_TOUCHID;
+    }
+#endif
+
+    return touchID3;
+}
+
 static SDL2_Event *Event3to2(const SDL_Event *event3, SDL2_Event *event2)
 {
     SDL_Renderer *renderer;
@@ -2283,15 +2394,22 @@ static SDL2_Event *Event3to2(const SDL_Event *event3, SDL2_Event *event2)
     case SDL_EVENT_DROP_COMPLETE:
         event2->drop.windowID = event3->drop.windowID;
         break;
+    case SDL_EVENT_WINDOW_MOUSE_ENTER:
+        /* Reset accumulated fractional mouse data when mouse focus changes */
+        residual_motion_x = 0.0f;
+        residual_motion_y = 0.0f;
+        break;
     case SDL_EVENT_MOUSE_MOTION:
         renderer = SDL3_GetRenderer(SDL3_GetWindowFromID(event3->motion.windowID));
         if (renderer) {
-            SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
-            SDL3_GetRenderLogicalPresentation(renderer, NULL, NULL, &mode);
-            if (mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
+            if (ShouldTransformMouseCoordinates(renderer)) {
                 SDL3_memcpy(&cvtevent3, event3, sizeof (SDL_Event));
                 SDL3_ConvertEventToRenderCoordinates(renderer, &cvtevent3);
-                if (!SDL3_GetBooleanProperty(SDL3_GetRendererProperties(renderer), PROP_RENDERER_RELATIVE_SCALING, true)) {
+                if (SDL3_GetBooleanProperty(SDL3_GetRendererProperties(renderer), PROP_RENDERER_RELATIVE_SCALING, true)) {
+                    /* Accumulate scaled relative motion */
+                    residual_motion_x = SDL3_modff(residual_motion_x + cvtevent3.motion.xrel, &cvtevent3.motion.xrel);
+                    residual_motion_y = SDL3_modff(residual_motion_y + cvtevent3.motion.yrel, &cvtevent3.motion.yrel);
+                } else {
                     /* Undo the relative scaling that SDL_ConvertEventToRenderCoordinates() performed */
                     cvtevent3.motion.xrel = event3->motion.xrel;
                     cvtevent3.motion.yrel = event3->motion.yrel;
@@ -2302,25 +2420,24 @@ static SDL2_Event *Event3to2(const SDL_Event *event3, SDL2_Event *event2)
         if (UseSDL2PrereleaseEvents) {
             SDL2PRERELEASE_MouseMotionEvent *motion = (SDL2PRERELEASE_MouseMotionEvent *)&event2->motion;
             motion->state = (Uint8)event3->motion.state;
-            motion->x = (Sint32)event3->motion.x;
-            motion->y = (Sint32)event3->motion.y;
-            motion->xrel = (Sint32)event3->motion.xrel;
-            motion->yrel = (Sint32)event3->motion.yrel;
+            motion->x = (Sint32)SDL3_lroundf(event3->motion.x);
+            motion->y = (Sint32)SDL3_lroundf(event3->motion.y);
+            motion->xrel = (Sint32)SDL3_lroundf(event3->motion.xrel);
+            motion->yrel = (Sint32)SDL3_lroundf(event3->motion.yrel);
         } else {
             SDL2_MouseMotionEvent *motion = &event2->motion;
-            motion->x = (Sint32)event3->motion.x;
-            motion->y = (Sint32)event3->motion.y;
-            motion->xrel = (Sint32)event3->motion.xrel;
-            motion->yrel = (Sint32)event3->motion.yrel;
+            motion->which = MouseID3to2(event3->motion.which);
+            motion->x = (Sint32)SDL3_lroundf(event3->motion.x);
+            motion->y = (Sint32)SDL3_lroundf(event3->motion.y);
+            motion->xrel = (Sint32)SDL3_lroundf(event3->motion.xrel);
+            motion->yrel = (Sint32)SDL3_lroundf(event3->motion.yrel);
         }
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
         renderer = SDL3_GetRenderer(SDL3_GetWindowFromID(event3->button.windowID));
         if (renderer) {
-            SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
-            SDL3_GetRenderLogicalPresentation(renderer, NULL, NULL, &mode);
-            if (mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
+            if (ShouldTransformMouseCoordinates(renderer)) {
                 SDL3_memcpy(&cvtevent3, event3, sizeof (SDL_Event));
                 SDL3_ConvertEventToRenderCoordinates(renderer, &cvtevent3);
                 event3 = &cvtevent3;
@@ -2330,20 +2447,19 @@ static SDL2_Event *Event3to2(const SDL_Event *event3, SDL2_Event *event2)
             SDL2PRERELEASE_MouseButtonEvent *button = (SDL2PRERELEASE_MouseButtonEvent *)&event2->button;
             button->button = event3->button.button;
             button->state = event3->button.down;
-            button->x = (Sint32)event3->button.x;
-            button->y = (Sint32)event3->button.y;
+            button->x = (Sint32)SDL3_lroundf(event3->button.x);
+            button->y = (Sint32)SDL3_lroundf(event3->button.y);
         } else {
             SDL2_MouseButtonEvent *button = &event2->button;
-            button->x = (Sint32)event3->button.x;
-            button->y = (Sint32)event3->button.y;
+            button->which = MouseID3to2(event3->button.which);
+            button->x = (Sint32)SDL3_lroundf(event3->button.x);
+            button->y = (Sint32)SDL3_lroundf(event3->button.y);
         }
         break;
     case SDL_EVENT_MOUSE_WHEEL:
         renderer = SDL3_GetRenderer(SDL3_GetWindowFromID(event3->wheel.windowID));
         if (renderer) {
-            SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
-            SDL3_GetRenderLogicalPresentation(renderer, NULL, NULL, &mode);
-            if (mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
+            if (ShouldTransformMouseCoordinates(renderer)) {
                 SDL3_memcpy(&cvtevent3, event3, sizeof (SDL_Event));
                 SDL3_ConvertEventToRenderCoordinates(renderer, &cvtevent3);
                 event3 = &cvtevent3;
@@ -2357,12 +2473,13 @@ static SDL2_Event *Event3to2(const SDL_Event *event3, SDL2_Event *event2)
             wheel->y = (Sint32)(event3->wheel.x * 120);
         } else {
             SDL2_MouseWheelEvent *wheel = &event2->wheel;
+            wheel->which = MouseID3to2(event3->wheel.which);
             wheel->x = event3->wheel.integer_x;
             wheel->y = event3->wheel.integer_y;
             wheel->preciseX = event3->wheel.x;
             wheel->preciseY = event3->wheel.y;
-            wheel->mouseX = (Sint32)event3->wheel.mouse_x;
-            wheel->mouseY = (Sint32)event3->wheel.mouse_y;
+            wheel->mouseX = (Sint32)SDL3_lroundf(event3->wheel.mouse_x);
+            wheel->mouseY = (Sint32)SDL3_lroundf(event3->wheel.mouse_y);
         }
         break;
     case SDL_EVENT_JOYSTICK_AXIS_MOTION:
@@ -2462,6 +2579,11 @@ static SDL2_Event *Event3to2(const SDL_Event *event3, SDL2_Event *event2)
     case SDL_EVENT_SENSOR_UPDATE:
         event2->sensor.which = SensorID3to2(event3->sensor.which);
         event2->sensor.timestamp_us = SDL_NS_TO_US(event3->sensor.sensor_timestamp);
+        break;
+    case SDL_EVENT_FINGER_UP:
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_MOTION:
+        event2->tfinger.touchId = TouchID3to2(event3->tfinger.touchID);
         break;
     default:
         break;
@@ -2780,6 +2902,14 @@ EventFilter3to2(void *userdata, SDL_Event *event3)
         case SDL_EVENT_CAMERA_DEVICE_DENIED:
         case SDL_EVENT_RENDER_DEVICE_LOST:
             return false;
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
+            if (event3->gbutton.button >= SDL_CONTROLLER_BUTTON_MAX) {
+                return false;
+            }
+            break;
+        default:
+            break;
     }
 
     GestureProcessEvent(event3);  /* this might need to generate new gesture events from touch input. */
@@ -2888,6 +3018,7 @@ EventFilter3to2(void *userdata, SDL_Event *event3)
                 event2.window.data2 = event3->window.data2;
 
                 if (event2.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    SDL_Renderer *renderer;
                     SDL_Window *window = SDL3_GetWindowFromID(event3->window.windowID);
                     if (!window) {
                         break;
@@ -2895,6 +3026,24 @@ EventFilter3to2(void *userdata, SDL_Event *event3)
 
                     /* The size changed event has the window size, not pixel size */
                     SDL3_GetWindowSize(window, &event2.window.data1, &event2.window.data2);
+
+                    /* SDL2 behavior is to reset the renderer viewport rect when the window is resized and
+                     * logical presentation is disabled.
+                     */
+                    renderer = SDL_GetRenderer(window);
+                    if (renderer) {
+                        SDL_RendererLogicalPresentation mode;
+                        if (SDL3_GetRenderLogicalPresentation(renderer, NULL, NULL, &mode) &&
+                            mode == SDL_LOGICAL_PRESENTATION_DISABLED) {
+                            SDL_RenderSetViewport(renderer, NULL);
+                        }
+
+                        /* SDL2 overwrites the render scale when the window is resized, however, on SDL3,
+                         * the user set scale and logical presentation scales are separate, and will be
+                         * stacked when applied, so set the scale to 1.0 to avoid double scaling.
+                         */
+                        SDL3_SetRenderScale(renderer, 1.0f, 1.0f);
+                    }
 
                     /* Fixes queue overflow with resize events that aren't processed */
                     {
@@ -2916,9 +3065,9 @@ EventFilter3to2(void *userdata, SDL_Event *event3)
                             SDL3_SetNumberProperty(props, PROP_WINDOW_EXPECTED_WIDTH, event2.window.data1);
                             SDL3_SetNumberProperty(props, PROP_WINDOW_EXPECTED_HEIGHT, event2.window.data2);
                             SDL3_SetFloatProperty(props, PROP_WINDOW_EXPECTED_SCALE, SDL3_GetWindowDisplayScale(window));
-                            if (!expected_w || !expected_h) {
-                                /* Don't send the initial size, SDL2 didn't in this case.
-                                 * ffplay breaks if the initial size is sent, see https://github.com/libsdl-org/sdl2-compat/issues/268 for details.
+                            if (!(SDL_GetWindowFlags(window) & SDL2_WINDOW_FULLSCREEN) && (!expected_w || !expected_h)) {
+                                /* Don't send the initial windowed size, SDL2 didn't in this case.
+                                 * ffplay breaks if the initial windowed size is sent, see https://github.com/libsdl-org/sdl2-compat/issues/268 for details.
                                  */
                                 break;
                             }
@@ -3847,6 +3996,33 @@ RWops2to3(SDL2_RWops *rwops2)
     return iostrm3;
 }
 
+static Sint64 SDLCALL
+RWops2to3_size_broken(void *userdata)
+{
+    return -1;
+}
+
+static SDL_IOStream *
+RWops2to3_BrokenSize(SDL2_RWops *rwops2)
+{
+    SDL_IOStream *iostrm3 = NULL;
+    if (rwops2) {
+        SDL_IOStreamInterface iface;
+        SDL_INIT_INTERFACE(&iface);
+        iface.size = RWops2to3_size_broken;
+        iface.seek = RWops2to3_seek;
+        iface.read = RWops2to3_read;
+        iface.write = RWops2to3_write;
+        iface.close = RWops2to3_close;
+
+        iostrm3 = SDL3_OpenIO(&iface, rwops2);
+        if (!iostrm3) {
+            return NULL;
+        }
+    }
+    return iostrm3;
+}
+
 SDL_DECLSPEC void *SDLCALL
 SDL_LoadFile_RW(SDL2_RWops *rwops2, size_t *datasize, int freesrc)
 {
@@ -3872,7 +4048,9 @@ SDL_LoadWAV_RW(SDL2_RWops *rwops2, int freesrc, SDL2_AudioSpec *spec2, Uint8 **a
     if (spec2 == NULL) {
         SDL3_InvalidParamError("spec");
     } else {
-        SDL_IOStream *iostrm3 = RWops2to3(rwops2);
+        // SDL2 didn't call the size function, so Hearts of Iron IV and Stellaris both pass in RWops structures that have garbage size pointers.
+        // SDL3 queries the size to prevent out of bounds loading, but can handle streams that don't implement it, so we'll just proactively prevent crashes here.
+        SDL_IOStream *iostrm3 = RWops2to3_BrokenSize(rwops2);
         if (iostrm3) {
             SDL_AudioSpec spec3;
             const bool rc = SDL3_LoadWAV_IO(iostrm3, true, &spec3, audio_buf, audio_len);   /* always close the iostrm3 bridge object. */
@@ -4000,6 +4178,13 @@ SDL_LoadBMP_RW(SDL2_RWops *rwops2, int freesrc)
     if (rwops2 && freesrc) {
         SDL_RWclose(rwops2);
     }
+
+    if (retval && SDL_BITSPERPIXEL(retval->format) < 8) {  /* SDL3 can provide BMPs that are < 8bpp. In SDL2, these would get converted to 8bpp. */
+        SDL_Surface *cvt = SDL3_ConvertSurfaceAndColorspace(retval, SDL_PIXELFORMAT_INDEX8, SDL3_GetSurfacePalette(retval), SDL3_GetSurfaceColorspace(retval), 0);
+        SDL3_DestroySurface(retval);
+        retval = cvt;  /* if conversion failed, Surface3to2(), below, will notice. */
+    }
+
     return Surface3to2(retval);
 }
 
@@ -4199,6 +4384,7 @@ SDL_DECLSPEC SDL2_Surface * SDLCALL
 SDL_ConvertSurface(SDL2_Surface *surface, const SDL2_PixelFormat *format, Uint32 flags)
 {
     SDL_Palette *palette = NULL;
+    SDL_PixelFormat pixel_format;
     SDL2_Surface *result;
 
     (void) flags; /* SDL3 removed the (unused) `flags` argument */
@@ -4208,6 +4394,14 @@ SDL_ConvertSurface(SDL2_Surface *surface, const SDL2_PixelFormat *format, Uint32
         return NULL;
     }
     if (!format) {
+        SDL3_InvalidParamError("format");
+        return NULL;
+    }
+
+    // SDL2 only relied on the bpp and masks, and Dwarf Fortress doesn't fill out the format field,
+    // so we'll always look up the pixel format from the masks here.
+    pixel_format = SDL3_GetPixelFormatForMasks(format->BitsPerPixel, format->Rmask, format->Gmask, format->Bmask, format->Amask);
+    if (pixel_format == SDL_PIXELFORMAT_UNKNOWN) {
         SDL3_InvalidParamError("format");
         return NULL;
     }
@@ -4224,7 +4418,7 @@ SDL_ConvertSurface(SDL2_Surface *surface, const SDL2_PixelFormat *format, Uint32
         SDL3_SetPaletteColors(palette, format->palette->colors, 0, ncolors);
     }
 
-    result = Surface3to2(SDL3_ConvertSurfaceAndColorspace(Surface2to3(surface), (SDL_PixelFormat)format->format, palette, SDL_COLORSPACE_SRGB, 0));
+    result = Surface3to2(SDL3_ConvertSurfaceAndColorspace(Surface2to3(surface), pixel_format, palette, SDL_COLORSPACE_SRGB, 0));
 
     if (palette) {
         SDL3_DestroyPalette(palette);
@@ -4351,8 +4545,7 @@ SDL_FreeSurface(SDL2_Surface *surface)
     }
 
     if (surface->map) {
-        SDL_Surface *surface3 = (SDL_Surface *)surface->map;
-        SDL3_DestroySurface(surface3);
+        SDL3_DestroySurface(Surface2to3(surface));
         surface->map = NULL;
     }
 
@@ -4465,6 +4658,7 @@ SDL_LowerBlit(SDL2_Surface *src2, SDL_Rect *srcrect, SDL2_Surface *dst2, SDL_Rec
     SDL_Surface *dst = Surface2to3(dst2);
     int result = SDL3_BlitSurfaceUnchecked(src, srcrect, dst, dstrect) ? 0 : -1;
     SynchronizeSurface3to2(src, src2);
+    SynchronizeSurface3to2(dst, dst2);
     return result;
 }
 
@@ -4635,6 +4829,7 @@ SDL_LowerBlitScaled(SDL2_Surface *src2, SDL_Rect *srcrect, SDL2_Surface *dst2, S
     SDL_Surface *dst = Surface2to3(dst2);
     int result = SDL3_BlitSurfaceUncheckedScaled(src, srcrect, dst, dstrect, SDL_SCALEMODE_NEAREST) ? 0 : -1;
     SynchronizeSurface3to2(src, src2);
+    SynchronizeSurface3to2(dst, dst2);
     return result;
 }
 
@@ -6002,6 +6197,11 @@ SDL_RenderSetLogicalSize(SDL_Renderer *renderer, int w, int h)
         }
     }
 
+    /* SDL2 overwrites the user set scale when setting the logical size, while SDL3 tracks it separately.
+     * Set to 1.0 to avoid double scaling within SDL3.
+     */
+    SDL3_SetRenderScale(renderer, 1.0f, 1.0f);
+
     retval = SDL3_SetRenderLogicalPresentation(renderer, w, h, mode) ? 0 : -1;
     return retval < 0 ? retval : FlushRendererIfNotBatching(renderer);
 }
@@ -6063,6 +6263,24 @@ SDL_RenderSetClipRect(SDL_Renderer *renderer, const SDL_Rect *rect)
 SDL_DECLSPEC int SDLCALL
 SDL_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 {
+    if (!renderer) {
+        return -1;
+    }
+
+    if (texture) {
+        /* When initially setting a render target, store the main view logical presentation mode,
+         * as it needs to be queried when potentially transforming mouse coordinates in events.
+         */
+        SDL_Texture *current_target = SDL3_GetRenderTarget(renderer);
+        if (!current_target) {
+            SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+            SDL3_GetRenderLogicalPresentation(renderer, NULL, NULL, &mode);
+            SDL3_SetNumberProperty(SDL3_GetRendererProperties(renderer), PROP_RENDERER_MAIN_VIEW_LOGICAL_PRESENTATION, mode);
+        }
+    } else {
+        SDL3_ClearProperty(SDL3_GetRendererProperties(renderer), PROP_RENDERER_MAIN_VIEW_LOGICAL_PRESENTATION);
+    }
+
     if (!SDL3_SetRenderTarget(renderer, texture)) {
         return -1;
     }
@@ -6930,6 +7148,9 @@ static void PostInitSubsystem(SDL_InitFlags new_flags)
         /* These are potentially noisy and have no SDL2 equivalent */
         SDL3_SetEventEnabled(SDL_EVENT_JOYSTICK_UPDATE_COMPLETE, false);
         SDL3_SetEventEnabled(SDL_EVENT_GAMEPAD_UPDATE_COMPLETE, false);
+
+        residual_motion_x = 0.0f;
+        residual_motion_y = 0.0f;
     }
 
     if (new_flags & SDL_INIT_VIDEO) {
@@ -8987,12 +9208,15 @@ SDL_GetWindowFlags(SDL_Window *window)
 {
     Uint32 flags3 = (Uint32) SDL3_GetWindowFlags(window);
     Uint32 flags = (flags3 & ~(SDL2_WINDOW_SHOWN | SDL2_WINDOW_FULLSCREEN | SDL2_WINDOW_FULLSCREEN_DESKTOP | SDL2_WINDOW_SKIP_TASKBAR | SDL2_WINDOW_ALWAYS_ON_TOP));
+    SDL_PropertiesID props;
 
     /* If we get no flags back from SDL3, check if the window is actually valid */
     if (flags3 == 0 && SDL3_GetWindowID(window) == 0) {
         /* SDL2 always returns 0 for an invalid window */
         return 0;
     }
+
+    props = SDL3_GetWindowProperties(window);
 
     if ((flags3 & SDL2_WINDOW_HIDDEN) == 0) {
         flags |= SDL2_WINDOW_SHOWN;
@@ -9010,6 +9234,15 @@ SDL_GetWindowFlags(SDL_Window *window)
     if (flags3 & SDL3_WINDOW_ALWAYS_ON_TOP) {
         flags |= SDL2_WINDOW_ALWAYS_ON_TOP;
     }
+
+    /* SDL2 sets grab flags unconditionally, but SDL3 sets them only on success */
+    if (SDL3_GetBooleanProperty(props, PROP_WINDOW_KEYBOARD_GRABBED, false)) {
+        flags |= SDL_WINDOW_KEYBOARD_GRABBED;
+    }
+    if (SDL3_GetBooleanProperty(props, PROP_WINDOW_MOUSE_GRABBED, false)) {
+        flags |= SDL_WINDOW_MOUSE_GRABBED;
+    }
+
     return flags;
 }
 
@@ -9083,15 +9316,23 @@ WindowPos2To3(int *x, int *y)
     }
 }
 
-static void StartTextInputForWindow(SDL_Window *window)
+static void StartTextInputForWindow(SDL_Window *window, bool implicit)
 {
     SDL_PropertiesID props = SDL3_CreateProperties();
+    const char *hint = SDL3_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
 
     SDL3_SetNumberProperty(props, SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT);
     SDL3_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
     SDL3_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
 
+    /* SDL2 didn't open the screen keyboard when text input was started implicitly via SDL_VideoInit() */
+    if (implicit && !hint) {
+        SDL3_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
+    }
     SDL3_StartTextInputWithProperties(window, props);
+    if (implicit && !hint) {
+        SDL3_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, NULL);
+    }
 
     SDL3_DestroyProperties(props);
 }
@@ -9100,7 +9341,7 @@ static void FinishWindowCreation(SDL_Window *window)
 {
     /* SDL3 has per-window text input, so we must enable on this window if it's active */
     if (SDL_IsTextInputActive()) {
-        StartTextInputForWindow(window);
+        StartTextInputForWindow(window, true);
     }
 }
 
@@ -9180,14 +9421,24 @@ SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
         }
     }
 
-    if (exclusive_fullscreen) {
-        ApplyFullscreenMode(window);
-        SDL3_SetWindowFullscreen(window, true);
+    if (window) {
+        SDL_PropertiesID props = SDL3_GetWindowProperties(window);
+
+        if (flags & SDL_WINDOW_KEYBOARD_GRABBED) {
+            SDL3_SetBooleanProperty(props, PROP_WINDOW_KEYBOARD_GRABBED, true);
+        }
+        if (flags & SDL_WINDOW_MOUSE_GRABBED) {
+            SDL3_SetBooleanProperty(props, PROP_WINDOW_MOUSE_GRABBED, true);
+        }
+        if (exclusive_fullscreen) {
+            ApplyFullscreenMode(window);
+            SDL3_SetWindowFullscreen(window, true);
+        }
+        if (manually_show) {
+            SDL3_ShowWindow(window);
+        }
+        FinishWindowCreation(window);
     }
-    if (manually_show) {
-        SDL3_ShowWindow(window);
-    }
-    FinishWindowCreation(window);
 
     return window;
 }
@@ -9252,7 +9503,9 @@ SDL_CreateWindowFrom(const void *data)
     window = SDL3_CreateWindowWithProperties(props);
     SDL3_DestroyProperties(props);
 
-    FinishWindowCreation(window);
+    if (window) {
+        FinishWindowCreation(window);
+    }
 
     return window;
 }
@@ -9269,6 +9522,7 @@ SDL_SetWindowFullscreen(SDL_Window *window, Uint32 flags)
     int ret = 0;
     bool fullscreen = false;
     SDL_WindowFlags old_flags = SDL_GetWindowFlags(window);
+    flags &= SDL2_WINDOW_FULLSCREEN_DESKTOP;
 
     if (flags == SDL2_WINDOW_FULLSCREEN_DESKTOP) {
         fullscreen = true;
@@ -9409,7 +9663,7 @@ SDL_StartTextInput(void)
         int i;
 
         for (i = 0; windows[i]; ++i) {
-            StartTextInputForWindow(windows[i]);
+            StartTextInputForWindow(windows[i], false);
         }
 
         SDL3_free(windows);
@@ -9709,28 +9963,66 @@ SDL_RestoreWindow(SDL_Window *window)
 SDL_DECLSPEC void SDLCALL
 SDL_SetWindowGrab(SDL_Window *window, SDL2_bool grabbed)
 {
-    SDL3_SetWindowMouseGrab(window, grabbed);
+    SDL_SetWindowMouseGrab(window, grabbed);
     if (SDL3_GetHintBoolean("SDL_GRAB_KEYBOARD", false)) {
-        SDL3_SetWindowKeyboardGrab(window, grabbed);
+        SDL_SetWindowKeyboardGrab(window, grabbed);
     }
 }
 
 SDL_DECLSPEC SDL2_bool SDLCALL
 SDL_GetWindowGrab(SDL_Window *window)
 {
-    return SDL3_GetWindowKeyboardGrab(window) || SDL3_GetWindowMouseGrab(window) ? SDL2_TRUE : SDL2_FALSE;
+    if (SDL3_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) {
+        SDL_PropertiesID props = SDL3_GetWindowProperties(window);
+        return SDL3_GetBooleanProperty(props, PROP_WINDOW_KEYBOARD_GRABBED, false) ||
+               SDL3_GetBooleanProperty(props, PROP_WINDOW_MOUSE_GRABBED, false) ? SDL2_TRUE : SDL2_FALSE;
+    }
+
+    /* Input focus is required to be the grab window */
+    return SDL2_FALSE;
 }
 
 SDL_DECLSPEC void SDLCALL
 SDL_SetWindowKeyboardGrab(SDL_Window *window, SDL2_bool grabbed)
 {
+    SDL_Window *prev_grab_wind = SDL3_GetGrabbedWindow();
+
+    if (!window) {
+        SDL3_SetError("Invalid window");
+        return;
+    }
+
     SDL3_SetWindowKeyboardGrab(window, grabbed);
+
+    if (prev_grab_wind && prev_grab_wind != window && grabbed) {
+        /* Stealing grab from another window ends both types of grab */
+        SDL_PropertiesID prev_wind_props = SDL3_GetWindowProperties(prev_grab_wind);
+        SDL3_SetBooleanProperty(prev_wind_props, PROP_WINDOW_KEYBOARD_GRABBED, false);
+        SDL3_SetBooleanProperty(prev_wind_props, PROP_WINDOW_MOUSE_GRABBED, false);
+    }
+    SDL3_SetBooleanProperty(SDL3_GetWindowProperties(window), PROP_WINDOW_KEYBOARD_GRABBED, grabbed);
 }
 
 SDL_DECLSPEC void SDLCALL
 SDL_SetWindowMouseGrab(SDL_Window *window, SDL2_bool grabbed)
 {
+    SDL_Window *prev_grab_wind;
+
+    if (!window) {
+        SDL3_SetError("Invalid window");
+        return;
+    }
+
+    prev_grab_wind = SDL3_GetGrabbedWindow();
     SDL3_SetWindowMouseGrab(window, grabbed);
+
+    if (prev_grab_wind && prev_grab_wind != window && grabbed) {
+        /* Stealing grab from another window ends both types of grab */
+        SDL_PropertiesID prev_wind_props = SDL3_GetWindowProperties(prev_grab_wind);
+        SDL3_SetBooleanProperty(prev_wind_props, PROP_WINDOW_KEYBOARD_GRABBED, false);
+        SDL3_SetBooleanProperty(prev_wind_props, PROP_WINDOW_MOUSE_GRABBED, false);
+    }
+    SDL3_SetBooleanProperty(SDL3_GetWindowProperties(window), PROP_WINDOW_MOUSE_GRABBED, grabbed);
 }
 
 /* SDL3 added a return value and renamed this. We just throw the value away for SDL2. */
@@ -10177,7 +10469,14 @@ SDL_HasColorKey(SDL2_Surface *surface)
 SDL_DECLSPEC int SDLCALL
 SDL_GetColorKey(SDL2_Surface *surface, Uint32 *key)
 {
-    return SDL3_GetSurfaceColorKey(Surface2to3(surface), key) ? 0 : -1;
+    Uint32 local_key;
+    if (SDL3_GetSurfaceColorKey(Surface2to3(surface), &local_key)) {
+        if (key) {
+            *key = local_key;
+        }
+        return 0;
+    }
+    return -1;
 }
 
 SDL_DECLSPEC int SDLCALL
@@ -11887,10 +12186,10 @@ SDL_hid_enumerate(unsigned short vendor_id, unsigned short product_id)
         for (i = list3; i != NULL; i = i->next) {
             SDL2_hid_device_info *info = (SDL2_hid_device_info *) SDL3_calloc(1, sizeof (SDL2_hid_device_info));
             char *path = SDL3_strdup(i->path);
-            wchar_t *serial_number = SDL3_wcsdup(i->serial_number);
-            wchar_t *manufacturer_string = SDL3_wcsdup(i->manufacturer_string);
-            wchar_t *product_string = SDL3_wcsdup(i->product_string);
-            if (!info || !path || !serial_number || !manufacturer_string || !product_string) {
+            wchar_t *serial_number = i->serial_number ? SDL3_wcsdup(i->serial_number) : NULL;
+            wchar_t *manufacturer_string = i->manufacturer_string ? SDL3_wcsdup(i->manufacturer_string) : NULL;
+            wchar_t *product_string = i->product_string ? SDL3_wcsdup(i->product_string) : NULL;
+            if (!info || !path) {
                 SDL_hid_free_enumeration(retval);
                 SDL3_free(info);
                 SDL3_free(path);

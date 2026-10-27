@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -81,6 +81,14 @@
 #define SDL_MAIN_NEEDED
 
 /* We need to export SDL_main so it can be launched from Java */
+#define SDLMAIN_DECLSPEC    DECLSPEC
+
+#elif defined(__OHOS__)
+/* On HarmonyOS SDL calls SDL_main from a background thread.
+ */
+#define SDL_MAIN_NEEDED
+
+/* We need to export SDL_main so SDL can find it in libmain.so */
 #define SDLMAIN_DECLSPEC    DECLSPEC
 
 #elif defined(__NACL__)
