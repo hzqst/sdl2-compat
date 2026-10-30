@@ -1423,7 +1423,13 @@ SDL2Compat_InitOnStartupInternal(void)
         goto fail;
     }
 
-    SDL3_SetHint("SDL_WINDOWS_DPI_AWARENESS", "unaware");
+#ifdef SDL_PLATFORM_WIN32
+    /* MetaHook declares DPI awareness in its executable manifest. */
+    if (SDL3_strcasecmp(SDL2Compat_GetExeName(), "MetaHook.exe") != 0)
+#endif
+    {
+        SDL3_SetHint("SDL_WINDOWS_DPI_AWARENESS", "unaware");
+    }
     SDL3_SetHint("SDL_BORDERLESS_WINDOWED_STYLE", "0");
     SDL3_SetHint("SDL_VIDEO_SYNC_WINDOW_OPERATIONS", "1");
     SDL3_SetHint("SDL_VIDEO_X11_EXTERNAL_WINDOW_INPUT", "0");
